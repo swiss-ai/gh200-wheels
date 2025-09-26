@@ -1,7 +1,6 @@
-FROM nvcr.io/nvidia/pytorch:25.06-py3
+FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04
 
-ENV SRC_DIR=/workspace/src \
-    WHL_DIR=/workspace/src/wheels
+ENV WHL_DIR=/workspace/wheels
 
 COPY ./*.whl ${WHL_DIR}/
 

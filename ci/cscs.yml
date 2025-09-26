@@ -8,19 +8,15 @@ stages:
 
 build wheels:
   stage: build-wheels
-  extends: .container-runner-clariden-gh200
-  image: docker.io/nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04
+  extends: .baremetal-runner-clariden-gh200
   variables:
     SLURM_TIMELIMT: '05:00:00'
   script:
-    - git clone https://github.com/fzyzcjy/torch_memory_saver.git
-    - cd torch_memory_saver
-    - git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82
-    - git submodule update --init --recursive
-    - python setup.py bdist_wheel 2>&1 | tee ./build.log
+    - podman build -f ci/Dockerfile-wheels -t my_image:latest
+    - podman run --rm -it -v $PWD:/shared_with_host my_image:latest bash -c 'cp /workspace/wheels/*.whl /shared_with_host/'
   artifacts:
     paths:
-      - torch_memory_saver*.whl
+      - *.whl
 
 build image:
   stage: build-image
