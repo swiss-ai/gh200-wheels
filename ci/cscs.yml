@@ -18,7 +18,7 @@ build base image:
 build flash-attn:
   stage: build-wheels
   extends: .container-runner-clariden-gh200
-  image: $PERSIST_IMAGE_NAME
+  image: $CSCS_REGISTRY_PATH/base_image:$CI_COMMIT_SHA
   variables:
     SLURM_TIMELIMT: '03:00:00'
   script:
@@ -43,9 +43,9 @@ build flash-attn:
 build torch_memory_saver:
   stage: build-wheels
   extends: .container-runner-clariden-gh200
-  image: $PERSIST_IMAGE_NAME
+  image: $CSCS_REGISTRY_PATH/base_image:$CI_COMMIT_SHA
   variables:
-    SLURM_TIMELIMT: '03:00:00'
+    SLURM_TIMELIMT: '02:00:00'
   script:
     - |
       git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
@@ -68,7 +68,7 @@ build final image:
 build test image:
   stage: test-image
   extends: .container-runner-clariden-gh200
-  image: $PERSIST_IMAGE_NAME
+  image: $CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA
   variables:
     SLURM_TIMELIMT: '03:00:00'
   script:
