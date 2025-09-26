@@ -30,8 +30,9 @@ RUN pip3 install --no-cache-dir -r   ${SRC_DIR}/vllm/requirements/build.txt \
                                     accelerate lit ruff libcst pre-commit pyvers wandb scikit-build-core
 
 RUN sed -i '/llguidance/d' ${SRC_DIR}/vllm/requirements/common.txt ;\
-    pip3 install --no-cache-dir  -r ${SRC_DIR}/vllm/requirements/cuda.txt \
-                                torchao cuda-bindings orjson codetiming datasets hydra-core peft pylatexenc \
-                                torchdata huggingface-hub hf_transfer prometheus-client aiohttp-cors opencensus \
-                                pyarrow==19.0.1 llguidance==1.2.0 ray==2.49.1 transformers==4.56.2 tensordict==0.10.0
+    pip3 install --no-cache-dir --root-user-action=ignore --break-system-packages \
+        -r ${SRC_DIR}/vllm/requirements/cuda.txt \
+        torchao cuda-bindings orjson codetiming datasets hydra-core peft pylatexenc \
+        torchdata huggingface-hub hf_transfer prometheus-client aiohttp-cors opencensus \
+        pyarrow==19.0.1 llguidance==1.2.0 ray==2.49.1 transformers==4.56.2 tensordict==0.10.0
 # ----------------------------
