@@ -41,7 +41,7 @@ build flash-attn:
       MAX_JOBS=16 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa3.log
   artifacts:
     paths:
-      - ${WHL_DIR}/*.whl
+      - /workspace/src/wheels/*.whl
 
 build torch_memory_saver:
   stage: build-wheels
@@ -58,7 +58,7 @@ build torch_memory_saver:
       python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
-      - ${WHL_DIR}/*.whl
+      - /workspace/src/wheels/*.whl
 
 build vllm:
   stage: build-wheels
@@ -72,7 +72,7 @@ build vllm:
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
-      - ${WHL_DIR}/*.whl
+      - /workspace/src/wheels/*.whl
 
 build sglang:
   stage: build-wheels
@@ -103,7 +103,7 @@ build sglang:
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python3 2>&1 | tee ./build_srt.log
   artifacts:
     paths:
-      - ${WHL_DIR}/*.whl
+      - /workspace/src/wheels/*.whl
 
 build verl:
   stage: build-wheels
@@ -120,7 +120,7 @@ build verl:
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
-      - ${WHL_DIR}/*.whl
+      - /workspace/src/wheels/*.whl
 
 build final image:
   stage: build-image
