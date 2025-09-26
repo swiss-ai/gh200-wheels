@@ -72,7 +72,7 @@ build test image:
   variables:
     SLURM_TIMELIMT: '03:00:00'
   script:
-    - # TODO: Test image here
+    # TODO: Test image here
     - python3 -c "import torch; assert torch.cuda.is_available(); print(torch.__version__)"
 
 publish wheel:

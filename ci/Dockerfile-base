@@ -26,8 +26,10 @@ RUN git clone https://github.com/vllm-project/vllm.git ;\
     git checkout 359d2930063038c78b9a54a1b0176fbabb1c204b ;\
     git submodule update --init --recursive ;\
     python3 use_existing_torch.py
-RUN pip3 install --no-cache-dir -r   ${SRC_DIR}/vllm/requirements/build.txt \
-                                    accelerate lit ruff libcst pre-commit pyvers wandb scikit-build-core
+
+RUN pip3 install --no-cache-dir --root-user-action=ignore --break-system-packages \
+        -r ${SRC_DIR}/vllm/requirements/build.txt \
+        accelerate lit ruff libcst pre-commit pyvers wandb scikit-build-core
 
 RUN sed -i '/llguidance/d' ${SRC_DIR}/vllm/requirements/common.txt ;\
     pip3 install --no-cache-dir --root-user-action=ignore --break-system-packages \
