@@ -29,7 +29,7 @@ RUN git clone https://github.com/vllm-project/vllm.git ;\
 
 RUN pip3 install --no-cache-dir --root-user-action=ignore --break-system-packages \
         -r ${SRC_DIR}/vllm/requirements/build.txt \
-        accelerate lit ruff libcst pre-commit pyvers wandb scikit-build-core
+        accelerate lit ruff libcst pre-commit pyvers wandb scikit-build-core cuda-python
 
 RUN sed -i '/llguidance/d' ${SRC_DIR}/vllm/requirements/common.txt ;\
     pip3 install --no-cache-dir --root-user-action=ignore --break-system-packages \
