@@ -16,7 +16,7 @@ build wheels:
     - podman run --rm -it -v $PWD:/shared_with_host my_image:latest bash -c 'cp /workspace/wheels/*.whl /shared_with_host/'
   artifacts:
     paths:
-      - *.whl
+      - ./*.whl
 
 build image:
   stage: build-image
