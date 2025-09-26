@@ -1,0 +1,37 @@
+FROM nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04
+
+ENV SRC_DIR=/workspace/src \
+    WHL_DIR=/workspace/src/wheels
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y python3-pip git curl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR ${SRC_DIR}
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TORCH_CUDA_ARCH_LIST='9.0+PTX'
+ENV VLLM_FA_CMAKE_GPU_ARCHES='90-real'
+ENV CUDA_HOME=/usr/local/cuda
+
+# ------- Dependencies -------
+RUN pip install --no-cache-dir --root-user-action=ignore --break-system-packages \
+    torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu129
+
+RUN git clone https://github.com/vllm-project/vllm.git ;\
+    cd vllm ;\
+    git checkout 359d2930063038c78b9a54a1b0176fbabb1c204b ;\
+    git submodule update --init --recursive ;\
+    python use_existing_torch.py
+RUN pip install --no-cache-dir -r   ${SRC_DIR}/vllm/requirements/build.txt \
+                                    accelerate lit ruff libcst pre-commit pyvers wandb scikit-build-core
+
+RUN sed -i '/llguidance/d' ${SRC_DIR}/vllm/requirements/common.txt ;\
+    pip install --no-cache-dir  -r ${SRC_DIR}/vllm/requirements/cuda.txt \
+                                torchao cuda-bindings orjson codetiming datasets hydra-core peft pylatexenc \
+                                torchdata huggingface-hub hf_transfer prometheus-client aiohttp-cors opencensus \
+                                pyarrow==19.0.1 llguidance==1.2.0 ray==2.49.1 transformers==4.56.2 tensordict==0.10.0
+# ----------------------------

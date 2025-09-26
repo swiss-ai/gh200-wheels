@@ -2,28 +2,67 @@ include:
   - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
 
 stages:
+  - build-base
   - build-wheels
   - build-image
   - publish
 
-build wheels:
-  stage: build-wheels
-  extends: .baremetal-runner-clariden-gh200
+build base image:
+  stage: build-base
+  extends: .container-builder-cscs-gh200
   variables:
-    SLURM_TIMELIMT: '05:00:00'
+    DOCKERFILE: ci/Dockerfile-base
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base_image:$CI_COMMIT_SHA
+
+build flash-attn:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $PERSIST_IMAGE_NAME
+  variables:
+    SLURM_TIMELIMT: '03:00:00'
   script:
-    - podman build -f ci/Dockerfile-wheels -t my_image:latest
-    - podman run --rm -it -v $PWD:/shared_with_host my_image:latest bash -c 'cp /workspace/wheels/*.whl /shared_with_host/'
+    - |
+      git clone https://github.com/flashinfer-ai/flashinfer.git ;\
+      cd flashinfer ;\
+      git checkout 50319b2e59e94e4e4b6f175e11184a677e0053b2 ;\
+      git submodule update --init --recursive ;\
+      MAX_JOBS=32 python -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
+      python -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - |
+      cd flash-attention ;\
+      git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
+      git submodule update --init --recursive ;\
+      MAX_JOBS=4 python setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa2.log ;\
+      cd hopper ;\
+      MAX_JOBS=16 python setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa3.log
   artifacts:
     paths:
       - ./*.whl
 
-build image:
+build torch_memory_saver:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $PERSIST_IMAGE_NAME
+  variables:
+    SLURM_TIMELIMT: '03:00:00'
+  script:
+    - |
+      git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
+      cd torch_memory_saver ;\
+      git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
+      git submodule update --init --recursive ;\
+      python setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ./build.log
+  artifacts:
+    paths:
+      - ./*.whl
+
+build final image:
   stage: build-image
   extends: .container-builder-cscs-gh200
   variables:
-    DOCKERFILE: ci/Dockerfile
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/my_final_build:$CI_COMMIT_SHA
+    DOCKERFILE: "ci/Dockerfile"
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA
+    DOCKER_BUILD_ARGS: '["BASEIMG=$CSCS_REGISTRY_PATH/base_image:$CI_COMMIT_SHA"]'
 
 publish wheel:
   stage: publish
