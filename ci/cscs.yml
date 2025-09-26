@@ -10,10 +10,10 @@ build wheels:
   variables:
     SLURM_TIMELIMT: '05:00:00'
   script:
-    - git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
-    - cd torch_memory_saver ;\
-    - git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
-    - git submodule update --init --recursive ;\
+    - git clone https://github.com/fzyzcjy/torch_memory_saver.git
+    - cd torch_memory_saver
+    - git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82
+    - git submodule update --init --recursive
     - python setup.py bdist_wheel 2>&1 | tee ./build.log
   artifacts:
     paths:
@@ -42,4 +42,3 @@ publish wheel:
     -H "Content-Type: application/octet-stream" \
     "https://uploads.github.com/repos/swiss-ai/gh200-wheels/releases/RELEASE_ID/assets?name=example.zip" \
     --data-binary "@example.zip"
-  
