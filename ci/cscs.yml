@@ -60,7 +60,21 @@ build torch_memory_saver:
     paths:
       - ${WHL_DIR}/*.whl
 
-build sgl-kernel:
+build vllm:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMT: '04:00:00'
+  script:
+    - |
+      cd ${SRC_DIR}/vllm ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+  artifacts:
+    paths:
+      - ${WHL_DIR}/*.whl
+
+build sglang:
   stage: build-wheels
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
@@ -87,6 +101,23 @@ build sgl-kernel:
                                           -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
                                           --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python3 2>&1 | tee ./build_srt.log
+  artifacts:
+    paths:
+      - ${WHL_DIR}/*.whl
+
+build verl:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMT: '02:00:00'
+  script:
+    - |
+      git clone https://github.com/swiss-ai/verl.git ;\
+      cd verl ;\
+      git checkout 8bf42d6a16dcd9abfc9109b32d6b5438d5b23fbe ;\
+      git submodule update --init --recursive ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
       - ${WHL_DIR}/*.whl
