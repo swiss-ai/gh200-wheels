@@ -6,4 +6,4 @@ ENV SRC_DIR=/workspace/src \
 
 COPY ./*.whl ${WHL_DIR}/
 
-RUN find . -name *.whl | xargs -n1 pip install --no-deps --no-cache-dir --force-reinstall
+RUN find . -name *.whl | xargs -n1 pip3 install --no-deps --no-cache-dir --force-reinstall
