@@ -21,6 +21,7 @@ build flash-attn:
   image: $CSCS_REGISTRY_PATH/base_image:$CI_COMMIT_SHA
   variables:
     SLURM_TIMELIMT: '03:00:00'
+    FLASHINFER_CUDA_ARCH_LIST: '9.0a'
   script:
     - |
       git clone https://github.com/flashinfer-ai/flashinfer.git ;\
@@ -28,17 +29,17 @@ build flash-attn:
       git checkout 50319b2e59e94e4e4b6f175e11184a677e0053b2 ;\
       git submodule update --init --recursive ;\
       MAX_JOBS=32 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
-      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+      python3 -m build --wheel --no-isolation 2>&1 | tee ./build.log
     - |
       cd flash-attention ;\
       git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
       git submodule update --init --recursive ;\
-      MAX_JOBS=4 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa2.log ;\
+      MAX_JOBS=4 python3 setup.py bdist_wheel 2>&1 | tee ../build_fa2.log ;\
       cd hopper ;\
-      MAX_JOBS=16 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa3.log
+      MAX_JOBS=16 python3 setup.py bdist_wheel 2>&1 | tee ../build_fa3.log
   artifacts:
     paths:
-      - ./*.whl
+      - dist/*.whl
 
 build torch_memory_saver:
   stage: build-wheels
@@ -52,10 +53,10 @@ build torch_memory_saver:
       cd torch_memory_saver ;\
       git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
       git submodule update --init --recursive ;\
-      python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ./build.log
+      python3 setup.py bdist_wheel 2>&1 | tee ./build.log
   artifacts:
     paths:
-      - ./*.whl
+      - dist/*.whl
 
 build final image:
   stage: build-image
