@@ -30,17 +30,18 @@ build flash-attn:
       git checkout 50319b2e59e94e4e4b6f175e11184a677e0053b2 ;\
       git submodule update --init --recursive ;\
       MAX_JOBS=32 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
-      python3 -m build --wheel --no-isolation 2>&1 | tee ./build.log
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
     - |
+      git clone https://github.com/Dao-AILab/flash-attention.git ;\
       cd flash-attention ;\
       git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
       git submodule update --init --recursive ;\
-      MAX_JOBS=4 python3 setup.py bdist_wheel 2>&1 | tee ../build_fa2.log ;\
+      MAX_JOBS=4 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa2.log ;\
       cd hopper ;\
-      MAX_JOBS=16 python3 setup.py bdist_wheel 2>&1 | tee ../build_fa3.log
+      MAX_JOBS=16 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ../build_fa3.log
   artifacts:
     paths:
-      - dist/*.whl
+      - ${WHL_DIR}/*.whl
 
 build torch_memory_saver:
   stage: build-wheels
@@ -54,10 +55,10 @@ build torch_memory_saver:
       cd torch_memory_saver ;\
       git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
       git submodule update --init --recursive ;\
-      python3 setup.py bdist_wheel 2>&1 | tee ./build.log
+      python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
-      - dist/*.whl
+      - ${WHL_DIR}/*.whl
 
 build sgl-kernel:
   stage: build-wheels
@@ -71,24 +72,24 @@ build sgl-kernel:
       cd sglang ;\
       git checkout 32d893730f64632f3255944f553023d0d7704fdb ;\
       git submodule update --init --recursive ;\
-      CMAKE_BUILD_PARALLEL_LEVEL=8 python3 -m build --wheel \
-        -Ccmake.define.SGLANG_KERNEL_ENABLE_BF16=1 \
-        -Ccmake.define.SGLANG_KERNEL_ENABLE_FP8=1 \
-        -Ccmake.define.SGLANG_KERNEL_ENABLE_FP4=1 \
-        -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
-        -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
-        -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
-        -Ccmake.define.CMAKE_PREFIX_PATH="$( echo $CMAKE_PREFIX_PATH |tr ':' ';' )" \
-        -Ccmake.define.CAFFE2_USE_CUDNN=1 \
-        -Ccmake.define.CAFFE2_USE_CUSPARSELT=1 \
-        -Ccmake.define.CAFFE2_USE_CUFILE=1 \
-        -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
-        -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
-        --no-isolation ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
-      python3 -m build --wheel --no-isolation ./python3 2>&1 | tee ./build_srt.log
+      CMAKE_BUILD_PARALLEL_LEVEL=4 python3 -m build --wheel \
+                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_BF16=1 \
+                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_FP8=1 \
+                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_FP4=1 \
+                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
+                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
+                                          -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
+                                          -Ccmake.define.CMAKE_PREFIX_PATH="$( echo $CMAKE_PREFIX_PATH |tr ':' ';' )" \
+                                          -Ccmake.define.CAFFE2_USE_CUDNN=1 \
+                                          -Ccmake.define.CAFFE2_USE_CUSPARSELT=1 \
+                                          -Ccmake.define.CAFFE2_USE_CUFILE=1 \
+                                          -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
+                                          -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
+                                          --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python3 2>&1 | tee ./build_srt.log
   artifacts:
     paths:
-      - dist/*.whl
+      - ${WHL_DIR}/*.whl
 
 build final image:
   stage: build-image
