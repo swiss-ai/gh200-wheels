@@ -1,0 +1,45 @@
+stage:
+  - build-wheels
+  - build-image
+  - publish
+
+build wheels:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: nvidia/cuda:12.9.1-cudnn-devel-ubuntu24.04
+  variables:
+    SLURM_TIMELIMT: '05:00:00'
+  script:
+    - git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
+    - cd torch_memory_saver ;\
+    - git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
+    - git submodule update --init --recursive ;\
+    - python setup.py bdist_wheel 2>&1 | tee ./build.log
+  artifacts:
+    paths:
+      - torch_memory_saver*.whl
+
+build image:
+  stage: build-image
+  extends: .container-builder-cscs-gh200
+  variables:
+    DOCKERFILE: ci/Dockerfile
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/my_final_build:$CI_COMMIT_SHA
+
+publish wheel:
+  stage: publish
+  extends: .container-runner-lightweight-zen2
+  rules:
+    - if: $CI_COMMIT_REF == "main"
+      when: on_success
+  image: curl:latest
+  script:
+    curl -L \
+    -X POST \
+    -H "Accept: application/vnd.github+json" \
+    -H "Authorization: Bearer <YOUR-TOKEN>" \
+    -H "X-GitHub-Api-Version: 2022-11-28" \
+    -H "Content-Type: application/octet-stream" \
+    "https://uploads.github.com/repos/swiss-ai/gh200-wheels/releases/RELEASE_ID/assets?name=example.zip" \
+    --data-binary "@example.zip"
+  
