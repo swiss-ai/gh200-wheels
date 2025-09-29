@@ -55,7 +55,11 @@ build vllm:
     - set -x
     - export WHL_DIR=$PWD
     - |
-      cd ${SRC_DIR}/vllm ;\
+      git clone https://github.com/vllm-project/vllm.git ;\
+      cd vllm ;\
+      git checkout 359d2930063038c78b9a54a1b0176fbabb1c204b ;\
+      git submodule update --init --recursive ;\
+      python3 use_existing_torch.py ;\
       MAX_JOBS=16 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
