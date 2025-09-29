@@ -6,7 +6,7 @@ ENV SRC_DIR=/workspace/src \
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && \
-    apt-get install -y python3-pip git curl nvtop libnuma-dev cmake build-essential && \
+    apt-get install -y python3-pip git curl nvtop lld rsync libnuma-dev cmake build-essential && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -39,12 +39,12 @@ RUN pip install --no-cache-dir --root-user-action=ignore --break-system-packages
     charset-normalizer==3.4.3 \
     click==8.3.0 \
     cloudpickle==3.1.1 \
-    cmake==4.1.0 \
+    cmake==3.31.6 \
     codetiming==1.4.0 \
     compressed-tensors==0.11.0 \
-    cuda-bindings==12.9.2 \
+    cuda-bindings==12.9.1 \
     cuda-pathfinder==1.2.3 \
-    cuda-python==12.9.2 \
+    cuda-python==12.9.1 \
     cupy-cuda12x==13.6.0 \
     datasets==4.0.0 \
     depyf==0.19.0 \
@@ -100,6 +100,8 @@ RUN pip install --no-cache-dir --root-user-action=ignore --break-system-packages
     ninja==1.13.0 \
     nodeenv==1.9.1 \
     numba==0.61.2 \
+    nvidia-nvshmem-cu12==3.4.5 \
+    nvshmem4py-cu12==0.1.2 \
     omegaconf==2.3.0 \
     openai==1.109.1 \
     openai-harmony==0.0.4 \
@@ -132,6 +134,7 @@ RUN pip install --no-cache-dir --root-user-action=ignore --break-system-packages
     pydantic==2.11.9 \
     pydantic-core==2.33.2 \
     pylatexenc==2.10 \
+    pynvml==13.0.1 \
     pyproject-hooks==1.2.0 \
     python-dateutil==2.9.0.post0 \
     python-dotenv==1.1.1 \

@@ -21,7 +21,7 @@ build flash-attn:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SBATCH_TIMELIMIT: '03:00:00'
+    SLURM_TIMELIMIT : '04:00:00'
     FLASHINFER_CUDA_ARCH_LIST: '9.0a'
   script:
     - set -x
@@ -31,16 +31,17 @@ build flash-attn:
       cd flashinfer ;\
       git checkout 50319b2e59e94e4e4b6f175e11184a677e0053b2 ;\
       git submodule update --init --recursive ;\
-      MAX_JOBS=16 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
+      MAX_JOBS=36 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - cd ..; rm -rf flashinfer;
     - |
       git clone https://github.com/Dao-AILab/flash-attention.git ;\
       cd flash-attention ;\
       git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
       git submodule update --init --recursive ;\
-      MAX_JOBS=4 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
+      MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
       cd hopper ;\
-      MAX_JOBS=16 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
+      MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
   artifacts:
     paths:
       - ./*.whl
@@ -50,7 +51,7 @@ build vllm:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SBATCH_TIMELIMIT: '04:00:00'
+    SLURM_TIMELIMIT : '02:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -60,7 +61,7 @@ build vllm:
       git checkout 359d2930063038c78b9a54a1b0176fbabb1c204b ;\
       git submodule update --init --recursive ;\
       python3 use_existing_torch.py ;\
-      MAX_JOBS=16 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+      MAX_JOBS=36 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
       - ./*.whl
@@ -70,7 +71,7 @@ build sglang:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SBATCH_TIMELIMIT: '04:00:00'
+    SLURM_TIMELIMIT : '04:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -79,10 +80,9 @@ build sglang:
       cd sglang ;\
       git checkout 32d893730f64632f3255944f553023d0d7704fdb ;\
       git submodule update --init --recursive ;\
-      CMAKE_BUILD_PARALLEL_LEVEL=4 python3 -m build --wheel \
+      CMAKE_BUILD_PARALLEL_LEVEL=24 python3 -m build --wheel \
                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_BF16=1 \
                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FP8=1 \
-                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_FP4=1 \
                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
                                           -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
@@ -93,7 +93,7 @@ build sglang:
                                           -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
                                           -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
                                           --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
-      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python3 2>&1 | tee ./build_srt.log
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python 2>&1 | tee ./build_srt.log
   artifacts:
     paths:
       - ./*.whl
@@ -103,7 +103,7 @@ build verl:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SBATCH_TIMELIMIT: '02:00:00'
+    SLURM_TIMELIMIT : '01:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -141,17 +141,35 @@ build test image:
   extends: .container-runner-clariden-gh200
   image: $CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA
   variables:
-    SBATCH_TIMELIMIT: '03:00:00'
+    SLURM_TIMELIMIT: '01:00:00'
   script:
     # TODO: Test image here
     - python3 -c "import torch; assert torch.cuda.is_available(); print(torch.__version__)"
 
-publish wheel:
+deploy:
+  stage: publish
+  extends: .baremetal-runner-clariden-gh200
+  rules:
+    - if: $CI_COMMIT_REF == "main"
+      when: on_success
+    - when: manual
+  variables:
+    TARGET_PATH: '/capstor/store/cscs/swissai/infra01/reasoning/cicd/gh200-wheels'
+  script:
+    - |
+      export TS=$(date +"%Y_%m_%d_%I_%M_%p");
+      mkdir -p $TARGET_PATH/$TS/ ;
+      lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
+      cp *.whl $TARGET_PATH/$TS/ ;
+      enroot import -x mount -o $TARGET_PATH/$TS/image.sqsh  podman://$CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA ;
+
+publish to github:
   stage: publish
   extends: .container-runner-lightweight-zen2
   rules:
     - if: $CI_COMMIT_REF == "main"
       when: on_success
+    - when: manual
   image: curl:latest
   script:
     - |
