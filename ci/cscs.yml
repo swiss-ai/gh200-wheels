@@ -25,39 +25,22 @@ build flash-attn:
     FLASHINFER_CUDA_ARCH_LIST: '9.0a'
   script:
     - set -x
+    - export WHL_DIR=$PWD
     - |
       git clone https://github.com/flashinfer-ai/flashinfer.git ;\
       cd flashinfer ;\
       git checkout 50319b2e59e94e4e4b6f175e11184a677e0053b2 ;\
       git submodule update --init --recursive ;\
       MAX_JOBS=16 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
-      python3 -m build --wheel --no-isolation --outdir=../ 2>&1 | tee ./build.log
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
     - |
       git clone https://github.com/Dao-AILab/flash-attention.git ;\
       cd flash-attention ;\
       git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
       git submodule update --init --recursive ;\
-      MAX_JOBS=4 python3 setup.py bdist_wheel --dist-dir=../ 2>&1 | tee ../build_fa2.log ;\
+      MAX_JOBS=4 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
       cd hopper ;\
-      MAX_JOBS=16 python3 setup.py bdist_wheel --dist-dir=../../ 2>&1 | tee ../build_fa3.log
-  artifacts:
-    paths:
-      - ./*.whl
-
-build torch_memory_saver:
-  stage: build-wheels
-  extends: .container-runner-clariden-gh200
-  image: $BASE_IMAGE
-  variables:
-    SLURM_TIMELIMT: '02:00:00'
-  script:
-    - set -x
-    - |
-      git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
-      cd torch_memory_saver ;\
-      git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
-      git submodule update --init --recursive ;\
-      python3 setup.py bdist_wheel --dist-dir=../ 2>&1 | tee ./build.log
+      MAX_JOBS=16 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
   artifacts:
     paths:
       - ./*.whl
@@ -70,9 +53,10 @@ build vllm:
     SLURM_TIMELIMT: '04:00:00'
   script:
     - set -x
+    - export WHL_DIR=$PWD
     - |
       cd ${SRC_DIR}/vllm ;\
-      python3 -m build --wheel --no-isolation --outdir=../ 2>&1 | tee ./build.log
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
       - ./*.whl
@@ -85,6 +69,7 @@ build sglang:
     SLURM_TIMELIMT: '04:00:00'
   script:
     - set -x
+    - export WHL_DIR=$PWD
     - |
       git clone https://github.com/sgl-project/sglang.git ;\
       cd sglang ;\
@@ -103,8 +88,8 @@ build sglang:
                                           -Ccmake.define.CAFFE2_USE_CUFILE=1 \
                                           -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
                                           -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
-                                          --no-isolation --outdir=../ ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
-      python3 -m build --wheel --no-isolation --outdir=../ ./python3 2>&1 | tee ./build_srt.log
+                                          --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python3 2>&1 | tee ./build_srt.log
   artifacts:
     paths:
       - ./*.whl
@@ -117,12 +102,24 @@ build verl:
     SLURM_TIMELIMT: '02:00:00'
   script:
     - set -x
+    - export WHL_DIR=$PWD
+    - |
+      git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
+      cd torch_memory_saver ;\
+      git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
+      git submodule update --init --recursive ;\
+      python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ./build.log
+    - |
+      git clone https://github.com/nickjbrowning/XIELU.git ;\
+      cd XIELU ;\
+      git submodule update --init --recursive ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
     - |
       git clone https://github.com/swiss-ai/verl.git ;\
       cd verl ;\
       git checkout 8bf42d6a16dcd9abfc9109b32d6b5438d5b23fbe ;\
       git submodule update --init --recursive ;\
-      python3 -m build --wheel --no-isolation --outdir=../ 2>&1 | tee ./build.log
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
       - ./*.whl
