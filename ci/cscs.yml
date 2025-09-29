@@ -21,7 +21,7 @@ build flash-attn:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMT: '03:00:00'
+    SBATCH_TIMELIMIT: '03:00:00'
     FLASHINFER_CUDA_ARCH_LIST: '9.0a'
   script:
     - set -x
@@ -50,7 +50,7 @@ build vllm:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMT: '04:00:00'
+    SBATCH_TIMELIMIT: '04:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -70,7 +70,7 @@ build sglang:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMT: '04:00:00'
+    SBATCH_TIMELIMIT: '04:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -103,7 +103,7 @@ build verl:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMT: '02:00:00'
+    SBATCH_TIMELIMIT: '02:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -141,7 +141,7 @@ build test image:
   extends: .container-runner-clariden-gh200
   image: $CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA
   variables:
-    SLURM_TIMELIMT: '03:00:00'
+    SBATCH_TIMELIMIT: '03:00:00'
   script:
     # TODO: Test image here
     - python3 -c "import torch; assert torch.cuda.is_available(); print(torch.__version__)"
