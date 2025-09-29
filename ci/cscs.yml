@@ -56,7 +56,7 @@ build vllm:
     - export WHL_DIR=$PWD
     - |
       cd ${SRC_DIR}/vllm ;\
-      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+      MAX_JOBS=16 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
   artifacts:
     paths:
       - ./*.whl
@@ -82,7 +82,7 @@ build sglang:
                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
                                           -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
-                                          -Ccmake.define.CMAKE_PREFIX_PATH="$( echo $CMAKE_PREFIX_PATH |tr ':' ';' )" \
+                                          -Ccmake.define.CMAKE_PREFIX_PATH=/usr/local/lib/python3.12/dist-packages/ \
                                           -Ccmake.define.CAFFE2_USE_CUDNN=1 \
                                           -Ccmake.define.CAFFE2_USE_CUSPARSELT=1 \
                                           -Ccmake.define.CAFFE2_USE_CUFILE=1 \
