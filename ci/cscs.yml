@@ -34,6 +34,29 @@ build flash-attn:
   image: $BASE_IMAGE
   variables:
     SLURM_TIMELIMIT : '04:00:00'
+  script:
+    - set -x
+    - export WHL_DIR=$PWD
+    - |
+      git clone https://github.com/Dao-AILab/flash-attention.git ;\
+      cd flash-attention ;\
+      git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
+      git submodule update --init --recursive ;\
+      MAX_JOBS=8 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
+      cd hopper ;\
+      MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
+    - ls -lah ${WHL_DIR}
+    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
+  artifacts:
+    paths:
+      - ./*.whl
+
+build flashinfer:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMIT : '04:00:00'
     FLASHINFER_CUDA_ARCH_LIST: '9.0a'
   script:
     - set -x
@@ -45,20 +68,11 @@ build flash-attn:
       git submodule update --init --recursive ;\
       MAX_JOBS=36 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
-    - cd ..; rm -rf flashinfer;
-    - |
-      git clone https://github.com/Dao-AILab/flash-attention.git ;\
-      cd flash-attention ;\
-      git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
-      git submodule update --init --recursive ;\
-      MAX_JOBS=8 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
-      cd hopper ;\
-      MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
     - ls -lah ${WHL_DIR}
     - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
-  # artifacts:
-  #   paths:
-  #     - ./*.whl
+  artifacts:
+    paths:
+      - ./*.whl
 
 build vllm:
   stage: build-wheels
