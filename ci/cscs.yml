@@ -1,6 +1,9 @@
 include:
   - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
 
+variables:
+  TARGET_PATH: '/capstor/store/cscs/swissai/infra01/reasoning/cicd/gh200-wheels'
+
 stages:
   - build-base
   - build-wheels
@@ -15,6 +18,14 @@ build base image:
     DOCKERFILE: ci/Dockerfile-base
     WATCH_FILECHANGES: 'ci/Dockerfile-base'
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base_image
+
+create target path:
+  stage: build-base
+  extends: .baremetal-runner-clariden-gh200
+  script:
+    - |
+      mkdir -p $TARGET_PATH/${CI_COMMIT_SHA}/ ;
+      lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/${CI_COMMIT_SHA}/ ;
 
 build flash-attn:
   stage: build-wheels
@@ -42,9 +53,11 @@ build flash-attn:
       MAX_JOBS=8 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
       cd hopper ;\
       MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
-  artifacts:
-    paths:
-      - ./*.whl
+    - ls -lah ${WHL_DIR}
+    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
+  # artifacts:
+  #   paths:
+  #     - ./*.whl
 
 build vllm:
   stage: build-wheels
@@ -62,6 +75,8 @@ build vllm:
       git submodule update --init --recursive ;\
       python3 use_existing_torch.py ;\
       MAX_JOBS=36 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - ls -lah ${WHL_DIR}
+    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
   artifacts:
     paths:
       - ./*.whl
@@ -124,6 +139,8 @@ build verl:
       git checkout 8bf42d6a16dcd9abfc9109b32d6b5438d5b23fbe ;\
       git submodule update --init --recursive ;\
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - ls -lah ${WHL_DIR}
+    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
   artifacts:
     paths:
       - ./*.whl
