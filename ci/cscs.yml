@@ -3,6 +3,7 @@ include:
 
 variables:
   TARGET_PATH: '/capstor/store/cscs/swissai/infra01/reasoning/cicd/gh200-wheels'
+  CSCS_ADDITIONAL_MOUNTS: '["/capstor"]'
 
 stages:
   - build-base
