@@ -39,7 +39,7 @@ build flash-attn:
       cd flash-attention ;\
       git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
       git submodule update --init --recursive ;\
-      MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
+      MAX_JOBS=8 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
       cd hopper ;\
       MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
   artifacts:
@@ -66,37 +66,37 @@ build vllm:
     paths:
       - ./*.whl
 
-build sglang:
-  stage: build-wheels
-  extends: .container-runner-clariden-gh200
-  image: $BASE_IMAGE
-  variables:
-    SLURM_TIMELIMIT : '04:00:00'
-  script:
-    - set -x
-    - export WHL_DIR=$PWD
-    - |
-      git clone https://github.com/sgl-project/sglang.git ;\
-      cd sglang ;\
-      git checkout 32d893730f64632f3255944f553023d0d7704fdb ;\
-      git submodule update --init --recursive ;\
-      CMAKE_BUILD_PARALLEL_LEVEL=24 python3 -m build --wheel \
-                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_BF16=1 \
-                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_FP8=1 \
-                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
-                                          -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
-                                          -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
-                                          -Ccmake.define.CMAKE_PREFIX_PATH=/usr/local/lib/python3.12/dist-packages/ \
-                                          -Ccmake.define.CAFFE2_USE_CUDNN=1 \
-                                          -Ccmake.define.CAFFE2_USE_CUSPARSELT=1 \
-                                          -Ccmake.define.CAFFE2_USE_CUFILE=1 \
-                                          -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
-                                          -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
-                                          --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
-      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python 2>&1 | tee ./build_srt.log
-  artifacts:
-    paths:
-      - ./*.whl
+# build sglang:
+#   stage: build-wheels
+#   extends: .container-runner-clariden-gh200
+#   image: $BASE_IMAGE
+#   variables:
+#     SLURM_TIMELIMIT : '04:00:00'
+#   script:
+#     - set -x
+#     - export WHL_DIR=$PWD
+#     - |
+#       git clone https://github.com/sgl-project/sglang.git ;\
+#       cd sglang ;\
+#       git checkout 32d893730f64632f3255944f553023d0d7704fdb ;\
+#       git submodule update --init --recursive ;\
+#       CMAKE_BUILD_PARALLEL_LEVEL=24 python3 -m build --wheel \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_BF16=1 \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FP8=1 \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
+#                                           -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
+#                                           -Ccmake.define.CMAKE_PREFIX_PATH=/usr/local/lib/python3.12/dist-packages/ \
+#                                           -Ccmake.define.CAFFE2_USE_CUDNN=1 \
+#                                           -Ccmake.define.CAFFE2_USE_CUSPARSELT=1 \
+#                                           -Ccmake.define.CAFFE2_USE_CUFILE=1 \
+#                                           -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
+#                                           -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
+#                                           --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
+#       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python 2>&1 | tee ./build_srt.log
+#   artifacts:
+#     paths:
+#       - ./*.whl
 
 build verl:
   stage: build-wheels
@@ -161,7 +161,7 @@ deploy:
       mkdir -p $TARGET_PATH/$TS/ ;
       lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
       cp *.whl $TARGET_PATH/$TS/ ;
-      enroot import -x mount -o $TARGET_PATH/$TS/image.sqsh  podman://$CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA ;
+      enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA ;
 
 publish to github:
   stage: publish
