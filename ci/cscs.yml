@@ -23,9 +23,9 @@ create target path:
   stage: build-base
   extends: .baremetal-runner-clariden-gh200
   script:
-    - |
-      mkdir -p $TARGET_PATH/${CI_COMMIT_SHA}/ ;
-      lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/${CI_COMMIT_SHA}/ ;
+    - set -x
+    - mkdir -p $TARGET_PATH/${CI_COMMIT_SHA}/ ;
+    - lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/${CI_COMMIT_SHA}/ ;
 
 build flash-attn:
   stage: build-wheels
@@ -173,12 +173,11 @@ deploy:
   variables:
     TARGET_PATH: '/capstor/store/cscs/swissai/infra01/reasoning/cicd/gh200-wheels'
   script:
-    - |
-      export TS=$(date +"%Y_%m_%d_%I_%M_%p");
-      mkdir -p $TARGET_PATH/$TS/ ;
-      lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
-      cp *.whl $TARGET_PATH/$TS/ ;
-      enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA ;
+    - export TS=$(date +"%Y_%m_%d_%I_%M_%p");
+    - mkdir -p $TARGET_PATH/$TS/ ;
+    - lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
+    - cp *.whl $TARGET_PATH/$TS/ ;
+    - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA ;
 
 publish to github:
   stage: publish
@@ -189,8 +188,8 @@ publish to github:
     - when: manual
   image: curl:latest
   script:
+    - export GH_ID=$(date +"%Y_%m_%d_%I_%M_%p");
     - |
-      export GH_ID=$(date +"%Y_%m_%d_%I_%M_%p");
       find . -name *.whl | xargs -IF curl -L \
       -X POST \
       -H "Accept: application/vnd.github+json" \
