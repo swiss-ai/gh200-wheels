@@ -1,16 +1,13 @@
 include:
   - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
 
-variables:
-  TARGET_PATH: '/capstor/store/cscs/swissai/infra01/reasoning/cicd/gh200-wheels'
-  CSCS_ADDITIONAL_MOUNTS: '["/capstor"]'
-
 stages:
   - build-base
   - build-wheels
   - build-image
   - test-image
   - publish
+
 
 build base image:
   stage: build-base
@@ -20,20 +17,13 @@ build base image:
     WATCH_FILECHANGES: 'ci/Dockerfile-base'
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base_image
 
-create target path:
-  stage: build-base
-  extends: .baremetal-runner-clariden-gh200
-  script:
-    - set -x
-    - mkdir -p $TARGET_PATH/${CI_COMMIT_SHA}/ ;
-    - lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/${CI_COMMIT_SHA}/ ;
 
 build flash-attn:
   stage: build-wheels
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMIT : '04:00:00'
+    SLURM_TIMELIMIT : '02:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -46,7 +36,6 @@ build flash-attn:
       cd hopper ;\
       MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
     - ls -lah ${WHL_DIR}
-    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
   artifacts:
     paths:
       - ./*.whl
@@ -56,7 +45,7 @@ build flashinfer:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMIT : '04:00:00'
+    SLURM_TIMELIMIT : '02:00:00'
     FLASHINFER_CUDA_ARCH_LIST: '9.0a'
   script:
     - set -x
@@ -69,7 +58,6 @@ build flashinfer:
       MAX_JOBS=36 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
     - ls -lah ${WHL_DIR}
-    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
   artifacts:
     paths:
       - ./*.whl
@@ -79,7 +67,7 @@ build vllm:
   extends: .container-runner-clariden-gh200
   image: $BASE_IMAGE
   variables:
-    SLURM_TIMELIMIT : '02:00:00'
+    SLURM_TIMELIMIT : '01:00:00'
   script:
     - set -x
     - export WHL_DIR=$PWD
@@ -91,7 +79,6 @@ build vllm:
       python3 use_existing_torch.py ;\
       MAX_JOBS=36 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
     - ls -lah ${WHL_DIR}
-    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
   artifacts:
     paths:
       - ./*.whl
@@ -101,7 +88,7 @@ build vllm:
 #   extends: .container-runner-clariden-gh200
 #   image: $BASE_IMAGE
 #   variables:
-#     SLURM_TIMELIMIT : '04:00:00'
+#     SLURM_TIMELIMIT : '03:00:00'
 #   script:
 #     - set -x
 #     - export WHL_DIR=$PWD
@@ -155,28 +142,30 @@ build verl:
       git submodule update --init --recursive ;\
       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
     - ls -lah ${WHL_DIR}
-    - cp ${WHL_DIR}/*.whl $TARGET_PATH/${CI_COMMIT_SHA}/
   artifacts:
     paths:
       - ./*.whl
+
 
 build final image:
   stage: build-image
   extends: .container-builder-cscs-gh200
   variables:
     DOCKERFILE: "ci/Dockerfile"
-    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA
     DOCKER_BUILD_ARGS: '["BASEIMG=$BASE_IMAGE"]'
+
 
 build test image:
   stage: test-image
   extends: .container-runner-clariden-gh200
-  image: $CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA
+  image: $CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA
   variables:
     SLURM_TIMELIMIT: '01:00:00'
   script:
     # TODO: Test image here
     - python3 -c "import torch; assert torch.cuda.is_available(); print(torch.__version__)"
+
 
 deploy:
   stage: publish
@@ -192,7 +181,7 @@ deploy:
     - mkdir -p $TARGET_PATH/$TS/ ;
     - lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
     - cp *.whl $TARGET_PATH/$TS/ ;
-    - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/gh200_image:$CI_COMMIT_SHA ;
+    - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA ;
 
 publish to github:
   stage: publish
