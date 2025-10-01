@@ -181,7 +181,7 @@ deploy:
     - mkdir -p $TARGET_PATH/$TS/ ;
     - lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
     - cp *.whl $TARGET_PATH/$TS/ ;
-    - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA ;
+    - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA || true;
 
 publish to github:
   stage: publish
