@@ -183,22 +183,22 @@ deploy:
     - cp *.whl $TARGET_PATH/$TS/ ;
     - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA || true;
 
-publish to github:
-  stage: publish
-  extends: .container-runner-lightweight-zen2
-  rules:
-    - if: $CI_COMMIT_REF == "main"
-      when: on_success
-    - when: manual
-  image: curl:latest
-  script:
-    - export GH_ID=$(date +"%Y_%m_%d_%I_%M_%p");
-    - |
-      find . -name *.whl | xargs -IF curl -L \
-      -X POST \
-      -H "Accept: application/vnd.github+json" \
-      -H "Authorization: Bearer $GITHUB_TOKEN" \
-      -H "X-GitHub-Api-Version: 2022-11-28" \
-      -H "Content-Type: application/octet-stream" \
-      "https://uploads.github.com/repos/swiss-ai/gh200-wheels/releases/${GH_ID}/assets?name=F" \
-      --data-binary "@F"
+# publish to github:
+#   stage: publish
+#   extends: .container-runner-lightweight-zen2
+#   rules:
+#     - if: $CI_COMMIT_REF == "main"
+#       when: on_success
+#     - when: manual
+#   image: curlimages/curl:latest
+#   script:
+#     - export GH_ID=$(date +"%Y_%m_%d_%I_%M_%p");
+#     - |
+#       find . -name *.whl | xargs -I FILE curl -L \
+#       -X POST \
+#       -H "Accept: application/vnd.github+json" \
+#       -H "Authorization: Bearer $GITHUB_TOKEN" \
+#       -H "X-GitHub-Api-Version: 2022-11-28" \
+#       -H "Content-Type: application/octet-stream" \
+#       "https://uploads.github.com/repos/swiss-ai/gh200-wheels/releases/${GH_ID}/assets?name=FILE" \
+#       --data-binary "@FILE"
