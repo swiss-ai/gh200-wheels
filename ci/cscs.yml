@@ -1,0 +1,204 @@
+include:
+  - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
+
+stages:
+  - build-base
+  - build-wheels
+  - build-image
+  - test-image
+  - publish
+
+
+build base image:
+  stage: build-base
+  extends: [.container-builder-cscs-gh200, .dynamic-image-name]
+  variables:
+    DOCKERFILE: ci/Dockerfile-base
+    WATCH_FILECHANGES: 'ci/Dockerfile-base'
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/base_image
+
+
+build flash-attn:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMIT : '02:00:00'
+  script:
+    - set -x
+    - export WHL_DIR=$PWD
+    - |
+      git clone https://github.com/Dao-AILab/flash-attention.git ;\
+      cd flash-attention ;\
+      git checkout 1ceaa984b2f348caea18b39a98458d33b4ea7a09 ;\
+      git submodule update --init --recursive ;\
+      MAX_JOBS=8 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa2.log ;\
+      cd hopper ;\
+      MAX_JOBS=24 python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ${WHL_DIR}/build_fa3.log
+    - ls -lah ${WHL_DIR}
+  artifacts:
+    paths:
+      - ./*.whl
+
+build flashinfer:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMIT : '02:00:00'
+    FLASHINFER_CUDA_ARCH_LIST: '9.0a'
+  script:
+    - set -x
+    - export WHL_DIR=$PWD
+    - |
+      git clone https://github.com/flashinfer-ai/flashinfer.git ;\
+      cd flashinfer ;\
+      git checkout 50319b2e59e94e4e4b6f175e11184a677e0053b2 ;\
+      git submodule update --init --recursive ;\
+      MAX_JOBS=36 python3 -m flashinfer.aot 2>&1 | tee ./build_aot.log ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - ls -lah ${WHL_DIR}
+  artifacts:
+    paths:
+      - ./*.whl
+
+build vllm:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMIT : '01:00:00'
+  script:
+    - set -x
+    - export WHL_DIR=$PWD
+    - |
+      git clone https://github.com/vllm-project/vllm.git ;\
+      cd vllm ;\
+      git checkout 359d2930063038c78b9a54a1b0176fbabb1c204b ;\
+      git submodule update --init --recursive ;\
+      python3 use_existing_torch.py ;\
+      MAX_JOBS=36 python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - ls -lah ${WHL_DIR}
+  artifacts:
+    paths:
+      - ./*.whl
+
+# build sglang:
+#   stage: build-wheels
+#   extends: .container-runner-clariden-gh200
+#   image: $BASE_IMAGE
+#   variables:
+#     SLURM_TIMELIMIT : '03:00:00'
+#   script:
+#     - set -x
+#     - export WHL_DIR=$PWD
+#     - |
+#       git clone https://github.com/sgl-project/sglang.git ;\
+#       cd sglang ;\
+#       git checkout 32d893730f64632f3255944f553023d0d7704fdb ;\
+#       git submodule update --init --recursive ;\
+#       CMAKE_BUILD_PARALLEL_LEVEL=24 python3 -m build --wheel \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_BF16=1 \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FP8=1 \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_SM90A=1 \
+#                                           -Ccmake.define.SGLANG_KERNEL_ENABLE_FA3=1 \
+#                                           -Ccmake.define.CUDAToolkit_ROOT="${CUDA_HOME}" \
+#                                           -Ccmake.define.CMAKE_PREFIX_PATH=/usr/local/lib/python3.12/dist-packages/ \
+#                                           -Ccmake.define.CAFFE2_USE_CUDNN=1 \
+#                                           -Ccmake.define.CAFFE2_USE_CUSPARSELT=1 \
+#                                           -Ccmake.define.CAFFE2_USE_CUFILE=1 \
+#                                           -Ccmake.define.CUDNN_LIBRARY=/usr/lib/aarch64-linux-gnu/libcudnn.so \
+#                                           -Ccmake.define.CUDNN_INCLUDE_DIR=/usr/include \
+#                                           --no-isolation --outdir=${WHL_DIR} ./sgl-kernel 2>&1 | tee ./build_kernel.log ;\
+#       python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} ./python 2>&1 | tee ./build_srt.log
+#   artifacts:
+#     paths:
+#       - ./*.whl
+
+build verl:
+  stage: build-wheels
+  extends: .container-runner-clariden-gh200
+  image: $BASE_IMAGE
+  variables:
+    SLURM_TIMELIMIT : '01:00:00'
+  script:
+    - set -x
+    - export WHL_DIR=$PWD
+    - |
+      git clone https://github.com/fzyzcjy/torch_memory_saver.git ;\
+      cd torch_memory_saver ;\
+      git checkout b068987708fd0d744d231e3ccdd3b64eecbbeb82 ;\
+      git submodule update --init --recursive ;\
+      python3 setup.py bdist_wheel --dist-dir=${WHL_DIR} 2>&1 | tee ./build.log
+    - |
+      git clone https://github.com/nickjbrowning/XIELU.git ;\
+      cd XIELU ;\
+      git submodule update --init --recursive ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - |
+      git clone https://github.com/swiss-ai/verl.git ;\
+      cd verl ;\
+      git checkout 8bf42d6a16dcd9abfc9109b32d6b5438d5b23fbe ;\
+      git submodule update --init --recursive ;\
+      python3 -m build --wheel --no-isolation --outdir=${WHL_DIR} 2>&1 | tee ./build.log
+    - ls -lah ${WHL_DIR}
+  artifacts:
+    paths:
+      - ./*.whl
+
+
+build final image:
+  stage: build-image
+  extends: .container-builder-cscs-gh200
+  variables:
+    DOCKERFILE: "ci/Dockerfile"
+    PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA
+    DOCKER_BUILD_ARGS: '["BASEIMG=$BASE_IMAGE"]'
+
+
+build test image:
+  stage: test-image
+  extends: .container-runner-clariden-gh200
+  image: $CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA
+  variables:
+    SLURM_TIMELIMIT: '01:00:00'
+  script:
+    # TODO: Test image here
+    - python3 -c "import torch; assert torch.cuda.is_available(); print(torch.__version__)"
+
+
+deploy:
+  stage: publish
+  extends: .baremetal-runner-clariden-gh200
+  rules:
+    - if: $CI_COMMIT_REF == "main"
+      when: on_success
+    - when: manual
+  variables:
+    TARGET_PATH: '/capstor/store/cscs/swissai/infra01/reasoning/cicd/gh200-wheels'
+  script:
+    - export TS=$(date +"%Y_%m_%d_%I_%M_%p");
+    - mkdir -p $TARGET_PATH/$TS/ ;
+    - lfs setstripe -E 64M -c 1 -E 256M -c 4 -E -1 -c -1 -S 64M $TARGET_PATH/$TS/ ;
+    - cp *.whl $TARGET_PATH/$TS/ ;
+    - enroot import -x mount -o $TARGET_PATH/$TS/image_${CI_COMMIT_SHA}.sqsh  podman://$CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA || true;
+
+publish to github:
+  stage: publish
+  extends: .container-runner-lightweight-zen2
+  rules:
+    - if: $CI_COMMIT_REF == "main"
+      when: on_success
+    - when: manual
+  image: curl:latest
+  script:
+    - export GH_ID=$(date +"%Y_%m_%d_%I_%M_%p");
+    - |
+      find . -name *.whl | xargs -IF curl -L \
+      -X POST \
+      -H "Accept: application/vnd.github+json" \
+      -H "Authorization: Bearer $GITHUB_TOKEN" \
+      -H "X-GitHub-Api-Version: 2022-11-28" \
+      -H "Content-Type: application/octet-stream" \
+      "https://uploads.github.com/repos/swiss-ai/gh200-wheels/releases/${GH_ID}/assets?name=F" \
+      --data-binary "@F"
