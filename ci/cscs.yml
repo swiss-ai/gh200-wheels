@@ -1,6 +1,11 @@
 include:
   - remote: 'https://gitlab.com/cscs-ci/recipes/-/raw/master/templates/v2/.ci-ext.yml'
 
+.clariden-svc-acct:
+  variables:
+    F7T_TOKEN_URL: 'https://api-service-account.hpc-user.svc.cscs.ch/api/v1/auth/token'
+    F7T_URL: 'https://firecrest-ml-v2.svc.cscs.ch'
+
 stages:
   - build-base
   - build-wheels
@@ -11,7 +16,7 @@ stages:
 
 build base image:
   stage: build-base
-  extends: [.container-builder-cscs-gh200, .dynamic-image-name]
+  extends: [.container-builder-cscs-gh200, .dynamic-image-name, .clariden-svc-acct]
   variables:
     DOCKERFILE: ci/Dockerfile-base
     WATCH_FILECHANGES: 'ci/Dockerfile-base'
@@ -20,7 +25,7 @@ build base image:
 
 build flash-attn:
   stage: build-wheels
-  extends: .container-runner-clariden-gh200
+  extends: [.container-runner-clariden-gh200, .clariden-svc-acct]
   image: $BASE_IMAGE
   variables:
     SLURM_TIMELIMIT : '02:00:00'
@@ -42,7 +47,7 @@ build flash-attn:
 
 build flashinfer:
   stage: build-wheels
-  extends: .container-runner-clariden-gh200
+  extends: [.container-runner-clariden-gh200, .clariden-svc-acct]
   image: $BASE_IMAGE
   variables:
     SLURM_TIMELIMIT : '02:00:00'
@@ -64,7 +69,7 @@ build flashinfer:
 
 build vllm:
   stage: build-wheels
-  extends: .container-runner-clariden-gh200
+  extends: [.container-runner-clariden-gh200, .clariden-svc-acct]
   image: $BASE_IMAGE
   variables:
     SLURM_TIMELIMIT : '01:00:00'
@@ -85,7 +90,7 @@ build vllm:
 
 # build sglang:
 #   stage: build-wheels
-#   extends: .container-runner-clariden-gh200
+#   extends: [.container-runner-clariden-gh200, .clariden-svc-acct]
 #   image: $BASE_IMAGE
 #   variables:
 #     SLURM_TIMELIMIT : '03:00:00'
@@ -117,7 +122,7 @@ build vllm:
 
 build verl:
   stage: build-wheels
-  extends: .container-runner-clariden-gh200
+  extends: [.container-runner-clariden-gh200, .clariden-svc-acct]
   image: $BASE_IMAGE
   variables:
     SLURM_TIMELIMIT : '01:00:00'
@@ -149,7 +154,7 @@ build verl:
 
 build final image:
   stage: build-image
-  extends: .container-builder-cscs-gh200
+  extends: [.container-builder-cscs-gh200, .clariden-svc-acct]
   variables:
     DOCKERFILE: "ci/Dockerfile"
     PERSIST_IMAGE_NAME: $CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA
@@ -158,7 +163,7 @@ build final image:
 
 build test image:
   stage: test-image
-  extends: .container-runner-clariden-gh200
+  extends: [.container-runner-clariden-gh200, .clariden-svc-acct]
   image: $CSCS_REGISTRY_PATH/public/gh200_image:$CI_COMMIT_SHA
   variables:
     SLURM_TIMELIMIT: '01:00:00'
@@ -169,7 +174,7 @@ build test image:
 
 deploy:
   stage: publish
-  extends: .baremetal-runner-clariden-gh200
+  extends: [.baremetal-runner-clariden-gh200, .clariden-svc-acct]
   rules:
     - if: $CI_COMMIT_REF == "main"
       when: on_success
@@ -185,7 +190,7 @@ deploy:
 
 # publish to github:
 #   stage: publish
-#   extends: .container-runner-lightweight-zen2
+#   extends: [.container-runner-lightweight-zen2, .clariden-svc-acct]
 #   rules:
 #     - if: $CI_COMMIT_REF == "main"
 #       when: on_success
